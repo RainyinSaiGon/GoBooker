@@ -7,7 +7,7 @@ import (
 type User struct {
 	Email    string `json:"email"`
 	Name     string `json:"name"`
-	Password string `json:"password"`
+	Password string `json:"-"` // never serialise the password
 }
 
 type UserRepository interface {
@@ -41,6 +41,9 @@ func (r *userRepository) GetAllUsers() ([]User, error) {
 			return nil, err
 		}
 		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return users, nil
 }
