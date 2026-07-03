@@ -5,11 +5,10 @@ services:
     command: >
       start
       --insecure
-      --advertise-addr=roach1:26357
-      --http-addr=roach1:8080
-      --listen-addr=roach1:26357
-      --sql-addr=roach1:26257
-      --join=roach1:26357,roach2:26357,roach3:26357
+      --advertise-addr=roach1:26257
+      --http-addr=0.0.0.0:8080
+      --listen-addr=0.0.0.0:26257
+      --join=roach1:26257,roach2:26257,roach3:26257
     ports:
       - "26257:26257"
       - "8080:8080"
@@ -24,14 +23,13 @@ services:
     command: >
       start
       --insecure
-      --advertise-addr=roach2:26357
-      --http-addr=roach2:8081
-      --listen-addr=roach2:26357
-      --sql-addr=roach2:26258
-      --join=roach1:26357,roach2:26357,roach3:26357
+      --advertise-addr=roach2:26257
+      --http-addr=0.0.0.0:8080
+      --listen-addr=0.0.0.0:26257
+      --join=roach1:26257,roach2:26257,roach3:26257
     ports:
-      - "26258:26258"
-      - "8081:8081"
+      - "26258:26257" # Maps host 26258 to container 26257
+      - "8081:8080"  # Maps host 8081 to container 8080
     volumes:
       - roach2:/cockroach/cockroach-data
     networks:
@@ -43,14 +41,13 @@ services:
     command: >
       start
       --insecure
-      --advertise-addr=roach3:26357
-      --http-addr=roach3:8082
-      --listen-addr=roach3:26357
-      --sql-addr=roach3:26259
-      --join=roach1:26357,roach2:26357,roach3:26357
+      --advertise-addr=roach3:26257
+      --http-addr=0.0.0.0:8080
+      --listen-addr=0.0.0.0:26257
+      --join=roach1:26257,roach2:26257,roach3:26257
     ports:
-      - "26259:26259"
-      - "8082:8082"
+      - "26259:26257" # Maps host 26259 to container 26257
+      - "8082:8080"  # Maps host 8082 to container 8080
     volumes:
       - roach3:/cockroach/cockroach-data
     networks:
@@ -58,7 +55,7 @@ services:
 
   cockroach-init:
     image: cockroachdb/cockroach:v26.2.3
-    command: init --insecure --host=roach1:26357
+    command: init --insecure --host=roach1:26257
     depends_on:
       - roach1
       - roach2
@@ -73,11 +70,12 @@ services:
       dockerfile: Dockerfile
     environment:
       PORT: 8081
-      DATABASE_URL: postgresql://root@roach1:26357/defaultdb?sslmode=disable
+      DATABASE_URL: postgresql://root@roach1:26257/defaultdb?sslmode=disable
     ports:
       - "3001:8081"
     depends_on:
-      - cockroach-init
+      cockroach-init:
+        condition: service_completed_successfully # Ensures init finishes before backend starts
     networks:
       - roachnet
     restart: on-failure
