@@ -1,14 +1,14 @@
 package main
 
 import (
+	"backend/config"
+	"backend/handler"
+	"backend/middleware"
+	"backend/repository"
+	"backend/service"
 	"database/sql"
 	"log"
 	"net/http"
-	"os"
-
-	"backend/repository"
-	"backend/router"
-	"backend/service"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -16,37 +16,37 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	cfg := config.Load()
+
+	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
 
-	// Verify the connection is live before accepting traffic.
 	if err := db.Ping(); err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
+	log.Println("database connection established")
 
+	// Repositories
 	userRepo := repository.NewUserRepository(db)
+
+	// Services
 	userSvc := service.NewUserService(userRepo)
-	h := router.NewRouter(userSvc)
 
+	// Handlers
+	userHandler := handler.NewUserHandler(userSvc)
+
+	// Router
 	r := mux.NewRouter()
+	handler.RegisterRoutes(r, userHandler)
 
-	// Users resource
-	r.HandleFunc("/users", h.GetAllUserHandler).Methods(http.MethodGet)
-	r.HandleFunc("/users", h.CreateUserHandler).Methods(http.MethodPost)
-	r.HandleFunc("/users/{id}", h.GetUserHandler).Methods(http.MethodGet)
-	r.HandleFunc("/users/{id}", h.UpdateUserHandler).Methods(http.MethodPut)
-	r.HandleFunc("/users/{id}", h.DeleteUserHandler).Methods(http.MethodDelete)
+	// Middleware (applied outermost → innermost)
+	chain := middleware.Recovery(middleware.Logger(r))
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8083"
-	}
-
-	log.Printf("listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
+	log.Printf("listening on :%s", cfg.Port)
+	if err := http.ListenAndServe(":"+cfg.Port, chain); err != nil {
 		log.Fatal(err)
 	}
 }

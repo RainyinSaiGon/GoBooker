@@ -1,79 +1,80 @@
 package repository
 
 import (
+	"backend/model"
 	"database/sql"
+	"time"
 )
 
-type User struct {
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Password string `json:"-"` // never serialise the password
-}
-
+// UserRepository defines data access operations for users.
 type UserRepository interface {
-	GetAllUsers() ([]User, error)
-	GetUserByID(id string) (User, error)
-	CreateUser(user User) (User, error)
+	GetAllUsers() ([]model.User, error)
+	GetUserByID(id string) (model.User, error)
+	CreateUser(user model.User) (model.User, error)
 	DeleteUser(id string) error
-	UpdateUser(id string, user User) (User, error)
+	UpdateUser(id string, user model.User) (model.User, error)
 }
 
-// userRepository implements UserRepository using a SQL database connection.
 type userRepository struct {
 	db *sql.DB
 }
 
+// NewUserRepository returns a UserRepository backed by the given *sql.DB.
 func NewUserRepository(db *sql.DB) UserRepository {
 	return &userRepository{db: db}
 }
 
-func (r *userRepository) GetAllUsers() ([]User, error) {
-	rows, err := r.db.Query("SELECT email, name FROM users")
+func (r *userRepository) GetAllUsers() ([]model.User, error) {
+	rows, err := r.db.Query(
+		`SELECT id, email, name, role, created_at, updated_at FROM users`,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var users []User
+	var users []model.User
 	for rows.Next() {
-		var user User
-		if err := rows.Scan(&user.Email, &user.Name); err != nil {
+		var u model.User
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
-		users = append(users, user)
+		users = append(users, u)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return users, nil
+	return users, rows.Err()
 }
 
-func (r *userRepository) GetUserByID(id string) (User, error) {
-	var user User
-	err := r.db.QueryRow("SELECT email, name FROM users WHERE email = $1", id).Scan(&user.Email, &user.Name)
-	if err != nil {
-		return User{}, err
-	}
-	return user, nil
+func (r *userRepository) GetUserByID(id string) (model.User, error) {
+	var u model.User
+	err := r.db.QueryRow(
+		`SELECT id, email, name, role, created_at, updated_at FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+	return u, err
 }
 
-func (r *userRepository) CreateUser(user User) (User, error) {
-	_, err := r.db.Exec("INSERT INTO users (email, name, password) VALUES ($1, $2, $3)", user.Email, user.Name, user.Password)
-	if err != nil {
-		return User{}, err
-	}
-	return user, nil
+func (r *userRepository) CreateUser(u model.User) (model.User, error) {
+	now := time.Now().UTC()
+	err := r.db.QueryRow(
+		`INSERT INTO users (id, email, name, password, role, created_at, updated_at)
+		 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $5)
+		 RETURNING id, created_at, updated_at`,
+		u.Email, u.Name, u.Password, u.Role, now,
+	).Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt)
+	return u, err
 }
 
 func (r *userRepository) DeleteUser(id string) error {
-	_, err := r.db.Exec("DELETE FROM users WHERE email = $1", id)
+	_, err := r.db.Exec(`DELETE FROM users WHERE id = $1`, id)
 	return err
 }
 
-func (r *userRepository) UpdateUser(id string, user User) (User, error) {
-	_, err := r.db.Exec("UPDATE users SET name = $1, password = $2 WHERE email = $3", user.Name, user.Password, id)
-	if err != nil {
-		return User{}, err
-	}
-	return user, nil
+func (r *userRepository) UpdateUser(id string, u model.User) (model.User, error) {
+	now := time.Now().UTC()
+	err := r.db.QueryRow(
+		`UPDATE users SET name = $1, password = $2, updated_at = $3
+		 WHERE id = $4
+		 RETURNING id, email, name, role, created_at, updated_at`,
+		u.Name, u.Password, now, id,
+	).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+	return u, err
 }
