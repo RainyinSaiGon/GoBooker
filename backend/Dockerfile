@@ -1,4 +1,19 @@
-FROM ubuntu:latest
-LABEL authors="Ferb"
+FROM golang:1.26-alpine AS builder
 
-ENTRYPOINT ["top", "-b"]
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server .
+
+FROM alpine:3.22
+
+WORKDIR /app
+
+COPY --from=builder /app/server ./server
+
+EXPOSE 8081
+
+ENTRYPOINT ["/app/server"]

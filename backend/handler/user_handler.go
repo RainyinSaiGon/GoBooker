@@ -4,19 +4,15 @@ import (
 	"backend/model"
 	"backend/service"
 	"encoding/json"
-	"errors"
+	"errors"	
 	"net/http"
 
 	"github.com/gorilla/mux"
 )
 
-// UserDTO is the outward-facing representation of a user (no password).
-type UserDTO struct {
-	ID        string `json:"id"`
+type UserResponse struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
-	Role      string `json:"role"`
-	CreatedAt string `json:"created_at"`
 }
 
 // UserRequest is the payload accepted on create/update.
@@ -24,7 +20,6 @@ type UserRequest struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
-	Role     string `json:"role"`
 }
 
 // UserHandler holds the service dependency for user HTTP handlers.
@@ -37,13 +32,10 @@ func NewUserHandler(svc service.UserService) *UserHandler {
 	return &UserHandler{svc: svc}
 }
 
-func toUserDTO(u model.User) UserDTO {
-	return UserDTO{
-		ID:        u.ID,
+func toUserResponse(u model.User) UserResponse {
+	return UserResponse{
 		Name:      u.Name,
 		Email:     u.Email,
-		Role:      u.Role,
-		CreatedAt: u.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 }
 
@@ -53,11 +45,11 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Failed to retrieve users")
 		return
 	}
-	dtos := make([]UserDTO, 0, len(users))
+	responses := make([]UserResponse, 0, len(users))
 	for _, u := range users {
-		dtos = append(dtos, toUserDTO(u))
+		responses = append(responses, toUserResponse(u))
 	}
-	writeJSON(w, http.StatusOK, dtos)
+	writeJSON(w, http.StatusOK, responses)
 }
 
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +63,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, toUserDTO(user))
+	writeJSON(w, http.StatusOK, toUserResponse(user))
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -84,13 +76,13 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: req.Password,
-		Role:     req.Role,
 	})
 	if err != nil {
+		//log.Printf("CRITICAL DATABASE ERROR: %v", err)
 		writeError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
-	writeJSON(w, http.StatusCreated, toUserDTO(created))
+	writeJSON(w, http.StatusCreated, toUserResponse(created))
 }
 
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -122,5 +114,5 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, toUserDTO(updated))
+	writeJSON(w, http.StatusOK, toUserResponse(updated))
 }

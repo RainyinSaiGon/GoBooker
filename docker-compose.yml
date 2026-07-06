@@ -55,7 +55,10 @@ services:
 
   cockroach-init:
     image: cockroachdb/cockroach:v26.2.3
-    command: init --insecure --host=roach1:26257
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "cockroach init --insecure --host=roach1:26257 ||
+      (echo 'Cluster already initialized, continuing...' && exit 0)"
     depends_on:
       - roach1
       - roach2
@@ -91,4 +94,3 @@ volumes:
 networks:
   roachnet:
     name: roachnet
-    driver: bridge
