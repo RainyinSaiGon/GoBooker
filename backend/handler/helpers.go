@@ -4,6 +4,7 @@ import (
 	"backend/service"
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 // writeJSON serialises data with the given HTTP status code.
@@ -21,4 +22,12 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 // isNotFound reports whether err is the domain-level ErrNotFound.
 func isNotFound(err error) bool {
 	return err == service.ErrNotFound
+}
+
+func isValidEmail(email string) bool {
+	// Basic email validation: check for presence of "@" and "."
+	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		return false
+	}
+	return true
 }

@@ -4,15 +4,15 @@ import (
 	"backend/model"
 	"backend/service"
 	"encoding/json"
-	"errors"	
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
 )
 
 type UserResponse struct {
-	Name      string `json:"name"`
-	Email     string `json:"email"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 // UserRequest is the payload accepted on create/update.
@@ -34,8 +34,8 @@ func NewUserHandler(svc service.UserService) *UserHandler {
 
 func toUserResponse(u model.User) UserResponse {
 	return UserResponse{
-		Name:      u.Name,
-		Email:     u.Email,
+		Name:  u.Name,
+		Email: u.Email,
 	}
 }
 
@@ -72,6 +72,22 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
+
+	if req.Name == "" || req.Email == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "Name, email, and password are required")
+		return
+	}
+
+	if len(req.Password) < 8 {
+		writeError(w, http.StatusBadRequest, "Password must be at least 8 characters long")
+		return
+	}
+
+	if req.Email != "" && !isValidEmail(req.Email) {
+		writeError(w, http.StatusBadRequest, "Invalid email format")
+		return
+	}
+
 	created, err := h.svc.CreateUser(model.User{
 		Name:     req.Name,
 		Email:    req.Email,

@@ -12,7 +12,6 @@ import (
 // ErrNotFound is returned when a requested resource does not exist.
 var ErrNotFound = errors.New("resource not found")
 
-// UserService defines business operations for users.
 type UserService interface {
 	GetAllUsers() ([]model.User, error)
 	GetUserByID(id string) (model.User, error)
