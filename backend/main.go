@@ -43,7 +43,8 @@ func main() {
 	handler.RegisterRoutes(r, userHandler)
 
 	// Middleware (applied outermost → innermost)
-	chain := middleware.Recovery(middleware.Logger(r))
+
+	chain := middleware.CORSMiddleware(middleware.Recovery(middleware.Logger(r)))
 
 	log.Printf("listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, chain); err != nil {
