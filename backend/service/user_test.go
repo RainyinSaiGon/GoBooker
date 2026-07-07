@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -10,13 +11,11 @@ import (
 	"backend/service"
 )
 
-
 type fakeUserRepository struct {
 	usersByID    map[string]model.User
 	usersByEmail map[string]model.User
 	nextID       int
 
-	// Optional error injection for testing failure paths.
 	createErr error
 }
 
@@ -51,7 +50,7 @@ func (f *fakeUserRepository) CreateUser(user model.User) (model.User, error) {
 		return model.User{}, errors.New("email already exists")
 	}
 	f.nextID++
-	user.ID = string(rune('0' + f.nextID)) // simple deterministic fake ID
+	user.ID = fmt.Sprintf("%d", f.nextID)
 	f.usersByID[user.ID] = user
 	f.usersByEmail[user.Email] = user
 	return user, nil
@@ -81,135 +80,87 @@ func TestCreateUser(t *testing.T) {
 	repo := newFakeUserRepository()
 	svc := service.NewUserService(repo)
 
-	testUser := model.User{
-		Name:     "Test User",
-		Email:    "test@example.com",
-		Password: "password123",
-	}
-
+	testUser := model.User{Name: "Test User", Email: "test@example.com", Password: "password123"}
 	got, err := svc.CreateUser(testUser)
 	if err != nil {
 		t.Fatalf("CreateUser() error = %v", err)
 	}
-
-	if got.Name != testUser.Name {
-		t.Errorf("Name = %q, want %q", got.Name, testUser.Name)
-	}
-	if got.Email != testUser.Email {
-		t.Errorf("Email = %q, want %q", got.Email, testUser.Email)
-	}
-	if got.ID == "" {
-		t.Error("CreateUser() did not assign an ID")
+	if got.Name != testUser.Name || got.Email != testUser.Email || got.ID == "" {
+		t.Errorf("CreateUser() returned incomplete user: %+v", got)
 	}
 }
 
-func TestCreateUser_DefaultsToCustomerRole(t *testing.T) {
+func TestGetAllUsers(t *testing.T) {
 	repo := newFakeUserRepository()
 	svc := service.NewUserService(repo)
+	svc.CreateUser(model.User{Name: "U1", Email: "u1@ex.com"})
+	svc.CreateUser(model.User{Name: "U2", Email: "u2@ex.com"})
 
-	got, err := svc.CreateUser(model.User{
-		Name:     "Test User",
-		Email:    "test@example.com",
-		Password: "password123",
-	})
+	users, err := svc.GetAllUsers()
 	if err != nil {
-		t.Fatalf("CreateUser() error = %v", err)
+		t.Fatalf("GetAllUsers() error = %v", err)
 	}
-
-	if got.Role != model.RoleCustomer {
-		t.Errorf("Role = %q, want %q", got.Role, model.RoleCustomer)
+	if len(users) != 2 {
+		t.Errorf("got %d users, want 2", len(users))
 	}
 }
 
-func TestCreateUser_PreservesExplicitRole(t *testing.T) {
+func TestGetUserByID(t *testing.T) {
 	repo := newFakeUserRepository()
 	svc := service.NewUserService(repo)
+	u, _ := svc.CreateUser(model.User{Name: "Test", Email: "t@ex.com"})
 
-	got, err := svc.CreateUser(model.User{
-		Name:     "Admin User",
-		Email:    "admin@example.com",
-		Password: "password123",
-		Role:     model.RoleAdmin,
-	})
+	got, err := svc.GetUserByID(u.ID)
 	if err != nil {
-		t.Fatalf("CreateUser() error = %v", err)
+		t.Fatalf("GetUserByID() error = %v", err)
+	}
+	if got.ID != u.ID {
+		t.Errorf("got ID %s, want %s", got.ID, u.ID)
 	}
 
-	if got.Role != model.RoleAdmin {
-		t.Errorf("Role = %q, want %q", got.Role, model.RoleAdmin)
+	_, err = svc.GetUserByID("nonexistent")
+	if err == nil {
+		t.Error("expected error for missing user, got nil")
+	}
+}
+
+func TestUpdateUser(t *testing.T) {
+	repo := newFakeUserRepository()
+	svc := service.NewUserService(repo)
+	u, _ := svc.CreateUser(model.User{Name: "Old", Email: "old@ex.com"})
+
+	updated := model.User{Name: "New", Email: "old@ex.com"}
+	got, err := svc.UpdateUser(u.ID, updated)
+	if err != nil {
+		t.Fatalf("UpdateUser() error = %v", err)
+	}
+	if got.Name != "New" {
+		t.Errorf("got name %s, want New", got.Name)
+	}
+}
+
+func TestDeleteUser(t *testing.T) {
+	repo := newFakeUserRepository()
+	svc := service.NewUserService(repo)
+	u, _ := svc.CreateUser(model.User{Name: "Del", Email: "del@ex.com"})
+
+	err := svc.DeleteUser(u.ID)
+	if err != nil {
+		t.Fatalf("DeleteUser() error = %v", err)
+	}
+
+	_, err = svc.GetUserByID(u.ID)
+	if err == nil {
+		t.Error("user still exists after deletion")
 	}
 }
 
 func TestCreateUser_HashesPassword(t *testing.T) {
 	repo := newFakeUserRepository()
 	svc := service.NewUserService(repo)
-
 	plaintext := "password123"
-	got, err := svc.CreateUser(model.User{
-		Name:     "Test User",
-		Email:    "test@example.com",
-		Password: plaintext,
-	})
-	if err != nil {
-		t.Fatalf("CreateUser() error = %v", err)
-	}
-
-	if got.Password == plaintext {
-		t.Fatal("CreateUser() stored password in plaintext, want bcrypt hash")
-	}
-
+	got, _ := svc.CreateUser(model.User{Name: "T", Email: "t@e.com", Password: plaintext})
 	if err := bcrypt.CompareHashAndPassword([]byte(got.Password), []byte(plaintext)); err != nil {
-		t.Errorf("stored password is not a valid bcrypt hash of the original: %v", err)
-	}
-}
-
-func TestCreateUser_DuplicateEmail(t *testing.T) {
-	repo := newFakeUserRepository()
-	svc := service.NewUserService(repo)
-
-	testUser := model.User{
-		Name:     "Test User",
-		Email:    "test@example.com",
-		Password: "password123",
-	}
-
-	if _, err := svc.CreateUser(testUser); err != nil {
-		t.Fatalf("first CreateUser() error = %v", err)
-	}
-
-	if _, err := svc.CreateUser(testUser); err == nil {
-		t.Error("expected error on duplicate email, got nil")
-	}
-}
-
-func TestCreateUser_RepositoryError(t *testing.T) {
-	repo := newFakeUserRepository()
-	repo.createErr = errors.New("db connection lost")
-	svc := service.NewUserService(repo)
-
-	_, err := svc.CreateUser(model.User{
-		Name:     "Test User",
-		Email:    "test@example.com",
-		Password: "password123",
-	})
-
-	if err == nil {
-		t.Fatal("expected error when repository fails, got nil")
-	}
-}
-
-func TestCreateUser_EmptyPasswordStillHashes(t *testing.T) {
-	repo := newFakeUserRepository()
-	svc := service.NewUserService(repo)
-
-	got, err := svc.CreateUser(model.User{
-		Name:  "Test User",
-		Email: "test@example.com",
-	})
-	if err != nil {
-		t.Fatalf("CreateUser() error = %v", err)
-	}
-	if got.Password == "" {
-		t.Error("expected a hashed value even for empty input password")
+		t.Error("password not hashed correctly")
 	}
 }

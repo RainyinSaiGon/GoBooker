@@ -10,6 +10,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// UserResponse is the public representation of a user returned by the API.
+// ID, role, and timestamps are intentionally omitted — internal server fields.
 type UserResponse struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
@@ -67,6 +69,9 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	// #7 limit request body to 1 MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
@@ -83,7 +88,8 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Email != "" && !isValidEmail(req.Email) {
+	// #8 — req.Email is guaranteed non-empty here; no redundant check needed
+	if !isValidEmail(req.Email) {
 		writeError(w, http.StatusBadRequest, "Invalid email format")
 		return
 	}
@@ -94,7 +100,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
-		//log.Printf("CRITICAL DATABASE ERROR: %v", err)
 		writeError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
@@ -104,7 +109,12 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	if err := h.svc.DeleteUser(id); err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to delete user")
+		// #3 — distinguish not-found from internal errors
+		if errors.Is(err, service.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "User not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, "Failed to delete user")
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "User deleted successfully"})
@@ -112,11 +122,31 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
+
+	// #7 limit request body to 1 MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
+
+	// #9 — apply the same input validation as CreateUser
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "Name is required")
+		return
+	}
+	if req.Email == "" || !isValidEmail(req.Email) {
+		writeError(w, http.StatusBadRequest, "Valid email is required")
+		return
+	}
+	// Password is optional on update; validate only when provided
+	if req.Password != "" && len(req.Password) < 8 {
+		writeError(w, http.StatusBadRequest, "Password must be at least 8 characters long")
+		return
+	}
+
 	updated, err := h.svc.UpdateUser(id, model.User{
 		Name:     req.Name,
 		Email:    req.Email,

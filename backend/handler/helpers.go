@@ -1,8 +1,8 @@
-package handler
+﻿package handler
 
 import (
-	"backend/service"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -11,17 +11,14 @@ import (
 func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("writeJSON encode error: %v", err)
+	}
 }
 
 // writeError is a convenience wrapper for JSON error responses.
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
-}
-
-// isNotFound reports whether err is the domain-level ErrNotFound.
-func isNotFound(err error) bool {
-	return err == service.ErrNotFound
 }
 
 func isValidEmail(email string) bool {

@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -29,6 +30,11 @@ func main() {
 	}
 	log.Println("database connection established")
 
+	// Connection pool tuning
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
 
@@ -44,7 +50,7 @@ func main() {
 
 	// Middleware (applied outermost → innermost)
 
-	chain := middleware.CORSMiddleware(middleware.Recovery(middleware.Logger(r)))
+	chain := middleware.CORSMiddleware(cfg.AllowedOrigin)(middleware.Recovery(middleware.Logger(r)))
 
 	log.Printf("listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, chain); err != nil {

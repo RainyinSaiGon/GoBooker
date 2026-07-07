@@ -54,7 +54,11 @@ func (s *userService) CreateUser(user model.User) (model.User, error) {
 }
 
 func (s *userService) DeleteUser(id string) error {
-	return s.repo.DeleteUser(id)
+	err := s.repo.DeleteUser(id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
 }
 
 func (s *userService) UpdateUser(id string, user model.User) (model.User, error) {
@@ -66,5 +70,9 @@ func (s *userService) UpdateUser(id string, user model.User) (model.User, error)
 		}
 		user.Password = string(hashed)
 	}
-	return s.repo.UpdateUser(id, user)
+	updated, err := s.repo.UpdateUser(id, user)
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.User{}, ErrNotFound
+	}
+	return updated, err
 }

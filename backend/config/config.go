@@ -11,8 +11,9 @@ import (
 
 // Config holds all application-level configuration.
 type Config struct {
-	Port        string
-	DatabaseURL string
+	Port          string
+	DatabaseURL   string
+	AllowedOrigin string
 }
 
 // Load reads configuration from environment variables and returns a Config.
@@ -34,11 +35,17 @@ func Load() Config {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8083"
+		port = "3001"
+	}
+
+	allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
+	if allowedOrigin == "" {
+		allowedOrigin = "http://localhost:3000"
 	}
 
 	return Config{
-		Port:        port,
-		DatabaseURL: dbURL,
+		Port:          port,
+		DatabaseURL:   dbURL,
+		AllowedOrigin: allowedOrigin,
 	}
 }

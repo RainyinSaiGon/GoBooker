@@ -64,17 +64,27 @@ func (r *userRepository) CreateUser(u model.User) (model.User, error) {
 }
 
 func (r *userRepository) DeleteUser(id string) error {
-	_, err := r.db.Exec(`DELETE FROM users WHERE id = $1`, id)
-	return err
+	res, err := r.db.Exec(`DELETE FROM users WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (r *userRepository) UpdateUser(id string, u model.User) (model.User, error) {
 	now := time.Now().UTC()
 	err := r.db.QueryRow(
-		`UPDATE users SET name = $1, password = $2, updated_at = $3
-		 WHERE id = $4
+		`UPDATE users SET name = $1, email = $2, password = $3, updated_at = $4
+		 WHERE id = $5
 		 RETURNING id, email, name, role, created_at, updated_at`,
-		u.Name, u.Password, now, id,
+		u.Name, u.Email, u.Password, now, id,
 	).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
 	return u, err
 }
