@@ -8,7 +8,7 @@ import (
 
 // UserRepository defines data access operations for users.
 type UserRepository interface {
-	GetAllUsers() ([]model.User, error)
+	GetAllUsers(q string, page, limit int) ([]model.User, error)
 	GetUserByID(id string) (model.User, error)
 	CreateUser(user model.User) (model.User, error)
 	DeleteUser(id string) error
@@ -24,9 +24,14 @@ func NewUserRepository(db *sql.DB) UserRepository {
 	return &userRepository{db: db}
 }
 
-func (r *userRepository) GetAllUsers() ([]model.User, error) {
+func (r *userRepository) GetAllUsers(q string, page, limit int) ([]model.User, error) {
+	
 	rows, err := r.db.Query(
-		`SELECT id, email, name, role, created_at, updated_at FROM users`,
+		`SELECT id, email, name, role FROM users
+		 WHERE name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%'
+		 ORDER BY name ASC
+		 LIMIT $2 OFFSET $3`,
+		q, limit, (page-1)*limit,
 	)
 	if err != nil {
 		return nil, err
@@ -36,7 +41,7 @@ func (r *userRepository) GetAllUsers() ([]model.User, error) {
 	var users []model.User
 	for rows.Next() {
 		var u model.User
-		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role); err != nil {
 			return nil, err
 		}
 		users = append(users, u)

@@ -13,7 +13,7 @@ import (
 var ErrNotFound = errors.New("resource not found")
 
 type UserService interface {
-	GetAllUsers() ([]model.User, error)
+	GetAllUsers(q string, page, limit int) ([]model.User, error)
 	GetUserByID(id string) (model.User, error)
 	CreateUser(user model.User) (model.User, error)
 	DeleteUser(id string) error
@@ -29,8 +29,8 @@ func NewUserService(repo repository.UserRepository) UserService {
 	return &userService{repo: repo}
 }
 
-func (s *userService) GetAllUsers() ([]model.User, error) {
-	return s.repo.GetAllUsers()
+func (s *userService) GetAllUsers(q string, page, limit int) ([]model.User, error) {
+	return s.repo.GetAllUsers(q, page, limit)
 }
 
 func (s *userService) GetUserByID(id string) (model.User, error) {

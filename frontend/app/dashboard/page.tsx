@@ -3,35 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
+
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface User { name: string; email: string; }
 
-function SkeletonRow() {
-  return (
-    <div className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
-      <div className="skeleton h-10 w-10 rounded-full shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="skeleton h-3.5 w-32 rounded" />
-        <div className="skeleton h-3 w-48 rounded" />
-      </div>
-    </div>
-  );
-}
 
-function Avatar({ name }: { name: string }) {
-  const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-  const hue = [...name].reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
-  return (
-    <div
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-      style={{ background: `hsl(${hue},60%,48%)` }}
-      aria-hidden
-    >
-      {initials}
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -53,23 +30,17 @@ export default function DashboardPage() {
     }
   }, []);
 
+
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const filtered = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
-  );
-
+ 
   return (
     <div className="animate-fade-in mx-auto max-w-3xl space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Users</h1>
-          <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
-            {isLoading ? "Loading…" : `${users.length} registered user${users.length !== 1 ? "s" : ""}`}
-          </p>
+         
         </div>
         <Link
           href="/"
@@ -108,12 +79,6 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* States */}
-      {isLoading && (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
-        </div>
-      )}
 
       {!isLoading && error && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-red-200 bg-red-50 py-12 text-center dark:border-red-900 dark:bg-red-950/20">
@@ -135,7 +100,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!isLoading && !error && filtered.length === 0 && (
+      {!isLoading && !error  && (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)] py-16 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--bg-subtle)]">
             <svg className="text-[var(--text-muted)]" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
@@ -156,30 +121,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!isLoading && !error && filtered.length > 0 && (
-        <div className="space-y-2.5">
-          {filtered.map((user, i) => (
-            <div
-              key={i}
-              className="group flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3.5 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)] hover:border-[var(--brand-200)]"
-              style={{ animationDelay: `${i * 40}ms` }}
-            >
-              <Avatar name={user.name} />
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--brand-600)] transition-colors">
-                  {user.name}
-                </p>
-                <p className="truncate text-xs text-[var(--text-muted)]">{user.email}</p>
-              </div>
-              <div className="shrink-0 flex items-center gap-1.5">
-                <span className="inline-flex items-center rounded-full bg-[var(--bg-subtle)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--brand-600)]">
-                  customer
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+    
     </div>
   );
 }

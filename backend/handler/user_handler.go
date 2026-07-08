@@ -6,12 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-
+	"strconv"
 	"github.com/gorilla/mux"
 )
 
+const (
+    defaultLimit = 20
+	defaultPage  = 1
+)
+
 // UserResponse is the public representation of a user returned by the API.
-// ID, role, and timestamps are intentionally omitted — internal server fields.
 type UserResponse struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
@@ -41,8 +45,26 @@ func toUserResponse(u model.User) UserResponse {
 	}
 }
 
+
+// GET /users?q=jane&page=1&limit=10 - Get all users with optional query parameters for filtering and pagination.
 func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.svc.GetAllUsers()
+	query := r.URL.Query()
+	q := query.Get("q")
+	page := query.Get("page")
+	limit := query.Get("limit")
+
+	
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		pageInt = defaultPage
+	}
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 {
+		limitInt = defaultLimit;
+	}
+
+	users, err := h.svc.GetAllUsers(q, pageInt, limitInt)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to retrieve users")
 		return
@@ -54,6 +76,7 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, responses)
 }
 
+// GET /users/{id} - Get a user by ID
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	user, err := h.svc.GetUserByID(id)

@@ -7,9 +7,6 @@ const (
 	RoleCustomer = "customer"
 	RoleAdmin    = "admin"
 )
-
-// User represents an application user.
-// Password is bcrypt-hashed and must never be serialised to JSON.
 type User struct {
 	ID        string    `db:"id"         json:"id"`
 	Name      string    `db:"name"        json:"name"`
