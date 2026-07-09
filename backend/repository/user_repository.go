@@ -25,11 +25,10 @@ func NewUserRepository(db *sql.DB) UserRepository {
 }
 
 // GetAllUsers returns a paginated list of users matching the search query,
-// along with the total count of matching records.
 func (r *userRepository) GetAllUsers(query string, limit, offset int) ([]model.User, int, error) {
 	queryParam := "%" + query + "%"
 
-	// 1. Get the total count of matching rows
+	// Get the total count of matching rows
 	var total int
 	err := r.db.QueryRow(
 		`SELECT COUNT(*) FROM users WHERE name ILIKE $1 OR email ILIKE $1`,
@@ -39,7 +38,7 @@ func (r *userRepository) GetAllUsers(query string, limit, offset int) ([]model.U
 		return nil, 0, err
 	}
 
-	// 2. Get the paginated rows ordered by created_at DESC (newest first)
+	// Get the paginated rows ordered by created_at DESC (newest first)
 	rows, err := r.db.Query(
 		`SELECT id, email, name, role, created_at, updated_at 
 		 FROM users 

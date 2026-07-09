@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -29,11 +28,6 @@ func main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 	log.Println("database connection established")
-
-	// Connection pool tuning
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(10)
-	db.SetConnMaxLifetime(5 * time.Minute)
 
 	// Repositories
 	userRepo := repository.NewUserRepository(db)

@@ -113,18 +113,7 @@ export default function SearchBar() {
         )}
       </div>
 
-      {/* ── Page-size selector ── */}
-      <select
-        id="page-size"
-        value={currentSize}
-        onChange={(e) => handlePageSize(e.target.value)}
-        aria-label="Rows per page"
-        className="h-10 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-200)]"
-      >
-        {PAGE_SIZE_OPTIONS.map((n) => (
-          <option key={n} value={n}>{n} / page</option>
-        ))}
-      </select>
+   
 
       {/* ── Refresh button ── */}
       <button

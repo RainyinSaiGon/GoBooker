@@ -1,4 +1,4 @@
-import { API_BASE } from "@/lib/api";
+﻿import { API_BASE } from "@/lib/api";
 import Link from "next/link";
 import SearchBar from "./_components/SearchBar";
 import Pagination from "./_components/Pagination";
@@ -31,7 +31,6 @@ async function fetchUsers(
   try {
     const res = await fetch(
       `${API_BASE}/users?query=${encodeURIComponent(query)}&page=${page}&size=${size}`,
-      { cache: "no-store" }
     );
     if (!res.ok) throw new Error(`Server responded with ${res.status}`);
     const json = await res.json();

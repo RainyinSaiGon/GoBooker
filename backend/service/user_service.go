@@ -6,17 +6,20 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
-
+	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"regexp"
 )
 
-// ErrNotFound is returned when a requested resource does not exist.
-var ErrNotFound = errors.New("resource not found")
+var (
+	ErrNotFound       = errors.New("user not found")
+	ErrDuplicateEmail = errors.New("email already in use")
+	ErrInvalidName    = errors.New("name is required")
+	ErrInvalidEmail   = errors.New("valid email is required")
+	ErrWeakPassword   = errors.New("password must be at least 8 characters long")
+)
 
-// ErrDuplicateEmail is returned when creating or updating a user with an
-// email address that is already registered.
-var ErrDuplicateEmail = errors.New("email already in use")
-
+var emailRE = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 // UserService defines business-logic operations for users.
 type UserService interface {
 	GetAllUsers(query string, page, size int) ([]model.User, int, error)
@@ -47,6 +50,11 @@ func isDuplicateKey(err error) bool {
 		strings.Contains(msg, "SQLSTATE 23505")
 }
 
+func isValidEmail(email string) bool {
+	return emailRE.MatchString(email)
+}
+
+
 // GetAllUsers handles page/size limits and calculates limits and offsets
 // before calling the database repository layer.
 func (s *userService) GetAllUsers(query string, page, size int) ([]model.User, int, error) {
@@ -73,12 +81,22 @@ func (s *userService) GetUserByID(id string) (model.User, error) {
 	return user, nil
 }
 
-// CreateUser hashes the password, assigns the default role, and persists the
-// user. Returns ErrDuplicateEmail if the email is already taken.
+// CreateUser validates input, hashes the password, assigns the default role
 func (s *userService) CreateUser(user model.User) (model.User, error) {
+	if user.Name == "" {
+		return model.User{}, ErrInvalidName
+	}
+	if user.Email == "" || !isValidEmail(user.Email) {
+		return model.User{}, ErrInvalidEmail
+	}
+	if len(user.Password) < 8 {
+		return model.User{}, ErrWeakPassword
+	}
+
 	if user.Role == "" {
 		user.Role = model.RoleCustomer
 	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return model.User{}, err
@@ -108,14 +126,21 @@ func (s *userService) DeleteUser(id string) error {
 	return nil
 }
 
-// UpdateUser replaces mutable fields for the given user. A blank Password
-// field means "keep the existing hash". Returns ErrNotFound or
-// ErrDuplicateEmail as appropriate.
 func (s *userService) UpdateUser(id string, user model.User) (model.User, error) {
+	if user.Name == "" {
+		return model.User{}, ErrInvalidName
+	}
+	if user.Email == "" || !isValidEmail(user.Email) {
+		return model.User{}, ErrInvalidEmail
+	}
+	// Password is optional on update; validate only when provided.
 	if user.Password != "" {
+		if len(user.Password) < 8 {
+			return model.User{}, ErrWeakPassword
+		}
 		hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return model.User{}, err
+			return model.User{}, fmt.Errorf("hashing password: %w", err)
 		}
 		user.Password = string(hashed)
 	}

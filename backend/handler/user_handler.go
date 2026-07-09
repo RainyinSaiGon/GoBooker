@@ -13,7 +13,6 @@ import (
 )
 
 // UserResponse is the public representation of a user returned by the API.
-// Password is intentionally excluded — it is never serialised to JSON.
 type UserResponse struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
@@ -108,8 +107,6 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	// Limit request body to 1 MB to prevent DoS via large payloads.
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -117,20 +114,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.Email == "" || req.Password == "" {
-		writeError(w, http.StatusBadRequest, "Name, email, and password are required")
-		return
-	}
-
-	if len(req.Password) < 8 {
-		writeError(w, http.StatusBadRequest, "Password must be at least 8 characters long")
-		return
-	}
-
-	if !isValidEmail(req.Email) {
-		writeError(w, http.StatusBadRequest, "Invalid email format")
-		return
-	}
 
 	created, err := h.svc.CreateUser(model.User{
 		Name:     req.Name,
@@ -138,12 +121,16 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
-		// B3: map duplicate-email to 409 Conflict instead of a generic 500.
-		if errors.Is(err, service.ErrDuplicateEmail) {
+		switch {
+		case errors.Is(err, service.ErrDuplicateEmail):
 			writeError(w, http.StatusConflict, "An account with that email already exists")
-			return
+		case errors.Is(err, service.ErrInvalidName),
+			errors.Is(err, service.ErrInvalidEmail),
+			errors.Is(err, service.ErrWeakPassword):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "Failed to create user")
 		}
-		writeError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
 	writeJSON(w, http.StatusCreated, toUserResponse(created))
@@ -159,33 +146,16 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Q2: 204 No Content is the correct REST response for a successful DELETE.
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 
-	// Limit request body to 1 MB.
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-
 	var req UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "Name is required")
-		return
-	}
-	if req.Email == "" || !isValidEmail(req.Email) {
-		writeError(w, http.StatusBadRequest, "Valid email is required")
-		return
-	}
-	// Password is optional on update; validate only when provided.
-	if req.Password != "" && len(req.Password) < 8 {
-		writeError(w, http.StatusBadRequest, "Password must be at least 8 characters long")
 		return
 	}
 
@@ -195,11 +165,16 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
+		switch {
+		case errors.Is(err, service.ErrNotFound):
 			writeError(w, http.StatusNotFound, "User not found")
-		} else if errors.Is(err, service.ErrDuplicateEmail) {
+		case errors.Is(err, service.ErrDuplicateEmail):
 			writeError(w, http.StatusConflict, "An account with that email already exists")
-		} else {
+		case errors.Is(err, service.ErrInvalidName),
+			errors.Is(err, service.ErrInvalidEmail),
+			errors.Is(err, service.ErrWeakPassword):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
 			writeError(w, http.StatusInternalServerError, "Failed to update user")
 		}
 		return

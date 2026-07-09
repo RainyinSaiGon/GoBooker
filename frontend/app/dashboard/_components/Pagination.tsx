@@ -4,7 +4,6 @@
  * Pagination — Client Component
  *
  * Implements the Next.js recommended pagination pattern
- * (nextjs.org/learn — Chapter 10: Adding Search and Pagination):
  *
  *   • Use useSearchParams() + usePathname() to build page URLs that preserve
  *     ALL existing search params (query, size, etc.) — only the `page` key
