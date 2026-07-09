@@ -1,4 +1,4 @@
-﻿package repository_test
+package repository_test
 
 import (
 	"database/sql"
@@ -79,12 +79,15 @@ func TestUserRepository_GetAllUsers(t *testing.T) {
 	seedUser(t, repo, model.User{Name: "A", Email: "a_integ@example.com", Password: "hash", Role: model.RoleCustomer})
 	seedUser(t, repo, model.User{Name: "B", Email: "b_integ@example.com", Password: "hash", Role: model.RoleCustomer})
 
-	users, err := repo.GetAllUsers()
+	users, total, err := repo.GetAllUsers("", 10, 0)
 	if err != nil {
 		t.Fatalf("GetAllUsers: %v", err)
 	}
 	if len(users) < 2 {
 		t.Errorf("GetAllUsers returned %d users, want at least 2", len(users))
+	}
+	if total < 2 {
+		t.Errorf("GetAllUsers total = %d, want at least 2", total)
 	}
 }
 

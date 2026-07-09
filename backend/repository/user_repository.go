@@ -8,7 +8,7 @@ import (
 
 // UserRepository defines data access operations for users.
 type UserRepository interface {
-	GetAllUsers(q string, page, limit int) ([]model.User, error)
+	GetAllUsers(query string, limit, offset int) ([]model.User, int, error)
 	GetUserByID(id string) (model.User, error)
 	CreateUser(user model.User) (model.User, error)
 	DeleteUser(id string) error
@@ -24,29 +24,48 @@ func NewUserRepository(db *sql.DB) UserRepository {
 	return &userRepository{db: db}
 }
 
-func (r *userRepository) GetAllUsers(q string, page, limit int) ([]model.User, error) {
-	
+// GetAllUsers returns a paginated list of users matching the search query,
+// along with the total count of matching records.
+func (r *userRepository) GetAllUsers(query string, limit, offset int) ([]model.User, int, error) {
+	queryParam := "%" + query + "%"
+
+	// 1. Get the total count of matching rows
+	var total int
+	err := r.db.QueryRow(
+		`SELECT COUNT(*) FROM users WHERE name ILIKE $1 OR email ILIKE $1`,
+		queryParam,
+	).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 2. Get the paginated rows ordered by created_at DESC (newest first)
 	rows, err := r.db.Query(
-		`SELECT id, email, name, role FROM users
-		 WHERE name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%'
-		 ORDER BY name ASC
+		`SELECT id, email, name, role, created_at, updated_at 
+		 FROM users 
+		 WHERE name ILIKE $1 OR email ILIKE $1 
+		 ORDER BY created_at DESC 
 		 LIMIT $2 OFFSET $3`,
-		q, limit, (page-1)*limit,
+		queryParam, limit, offset,
 	)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var users []model.User
+	users := []model.User{}
 	for rows.Next() {
 		var u model.User
-		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role); err != nil {
-			return nil, err
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, 0, err
 		}
 		users = append(users, u)
 	}
-	return users, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return users, total, nil
 }
 
 func (r *userRepository) GetUserByID(id string) (model.User, error) {
@@ -85,11 +104,23 @@ func (r *userRepository) DeleteUser(id string) error {
 
 func (r *userRepository) UpdateUser(id string, u model.User) (model.User, error) {
 	now := time.Now().UTC()
-	err := r.db.QueryRow(
-		`UPDATE users SET name = $1, email = $2, password = $3, updated_at = $4
-		 WHERE id = $5
-		 RETURNING id, email, name, role, created_at, updated_at`,
-		u.Name, u.Email, u.Password, now, id,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+	var err error
+	if u.Password != "" {
+		err = r.db.QueryRow(
+			`UPDATE users
+			    SET name = $1, email = $2, password = $3, updated_at = $4
+			  WHERE id = $5
+			  RETURNING id, email, name, role, created_at, updated_at`,
+			u.Name, u.Email, u.Password, now, id,
+		).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+	} else {
+		err = r.db.QueryRow(
+			`UPDATE users
+			    SET name = $1, email = $2, updated_at = $3
+			  WHERE id = $4
+			  RETURNING id, email, name, role, created_at, updated_at`,
+			u.Name, u.Email, now, id,
+		).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+	}
 	return u, err
 }

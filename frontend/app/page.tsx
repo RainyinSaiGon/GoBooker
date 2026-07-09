@@ -1,9 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { API_BASE } from "@/lib/api";
 
 interface FormErrors { name?: string; email?: string; password?: string; }
 
@@ -63,13 +62,16 @@ export default function SignUpPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API}/users`, {
+      const res = await fetch(`${API_BASE}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          throw new Error(d.error || "An account with that email already exists");
+        }
         throw new Error(d.error || "Failed to create account");
       }
       setSuccess(true);
@@ -139,8 +141,8 @@ export default function SignUpPage() {
 
               <form onSubmit={handleSubmit} noValidate className="space-y-5">
                 {/* Full name */}
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                <div> 
+                  <label htmlFor="name" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                     Full Name <span className="text-red-500 normal-case tracking-normal font-normal">*</span>
                   </label>
                   <input
@@ -154,7 +156,7 @@ export default function SignUpPage() {
 
                 {/* Email */}
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  <label htmlFor="email" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                     Email <span className="text-red-500 normal-case tracking-normal font-normal">*</span>
                   </label>
                   <input
@@ -168,7 +170,7 @@ export default function SignUpPage() {
 
                 {/* Password */}
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  <label htmlFor="password" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                     Password <span className="text-red-500 normal-case tracking-normal font-normal">*</span>
                   </label>
                   <div className="relative">

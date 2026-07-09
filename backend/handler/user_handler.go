@@ -5,20 +5,28 @@ import (
 	"backend/service"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
+
 	"github.com/gorilla/mux"
 )
 
-const (
-    defaultLimit = 20
-	defaultPage  = 1
-)
-
 // UserResponse is the public representation of a user returned by the API.
+// Password is intentionally excluded — it is never serialised to JSON.
 type UserResponse struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
+	Role  string `json:"role"` // F2: expose role so the frontend can show the real value
+}
+
+// PaginatedUsersResponse is the wrapper for user queries.
+type PaginatedUsersResponse struct {
+	Users      []UserResponse `json:"users"`
+	Total      int            `json:"total"`
+	Page       int            `json:"page"`
+	Size       int            `json:"size"`
+	TotalPages int            `json:"totalPages"`
 }
 
 // UserRequest is the payload accepted on create/update.
@@ -42,41 +50,49 @@ func toUserResponse(u model.User) UserResponse {
 	return UserResponse{
 		Name:  u.Name,
 		Email: u.Email,
+		Role:  u.Role,
 	}
 }
 
-
-// GET /users?q=jane&page=1&limit=10 - Get all users with optional query parameters for filtering and pagination.
 func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	q := query.Get("q")
-	page := query.Get("page")
-	limit := query.Get("limit")
-
+	q := r.URL.Query()
+	query := q.Get("query")
 	
-	pageInt, err := strconv.Atoi(page)
-	if err != nil || pageInt < 1 {
-		pageInt = defaultPage
+	page, _ := strconv.Atoi(q.Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	
+	size, _ := strconv.Atoi(q.Get("size"))
+	if size < 1 {
+		size = 10
 	}
 
-	limitInt, err := strconv.Atoi(limit)
-	if err != nil || limitInt < 1 {
-		limitInt = defaultLimit;
-	}
-
-	users, err := h.svc.GetAllUsers(q, pageInt, limitInt)
+	users, total, err := h.svc.GetAllUsers(query, page, size)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to retrieve users")
 		return
 	}
+
 	responses := make([]UserResponse, 0, len(users))
 	for _, u := range users {
 		responses = append(responses, toUserResponse(u))
 	}
-	writeJSON(w, http.StatusOK, responses)
+
+	totalPages := 1
+	if total > 0 {
+		totalPages = int(math.Ceil(float64(total) / float64(size)))
+	}
+
+	writeJSON(w, http.StatusOK, PaginatedUsersResponse{
+		Users:      responses,
+		Total:      total,
+		Page:       page,
+		Size:       size,
+		TotalPages: totalPages,
+	})
 }
 
-// GET /users/{id} - Get a user by ID
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	user, err := h.svc.GetUserByID(id)
@@ -92,7 +108,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	// #7 limit request body to 1 MB
+	// Limit request body to 1 MB to prevent DoS via large payloads.
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req UserRequest
@@ -111,7 +127,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// #8 — req.Email is guaranteed non-empty here; no redundant check needed
 	if !isValidEmail(req.Email) {
 		writeError(w, http.StatusBadRequest, "Invalid email format")
 		return
@@ -123,6 +138,11 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
+		// B3: map duplicate-email to 409 Conflict instead of a generic 500.
+		if errors.Is(err, service.ErrDuplicateEmail) {
+			writeError(w, http.StatusConflict, "An account with that email already exists")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
@@ -132,7 +152,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	if err := h.svc.DeleteUser(id); err != nil {
-		// #3 — distinguish not-found from internal errors
 		if errors.Is(err, service.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "User not found")
 		} else {
@@ -140,13 +159,14 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"message": "User deleted successfully"})
+	// Q2: 204 No Content is the correct REST response for a successful DELETE.
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 
-	// #7 limit request body to 1 MB
+	// Limit request body to 1 MB.
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req UserRequest
@@ -155,7 +175,6 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// #9 — apply the same input validation as CreateUser
 	if req.Name == "" {
 		writeError(w, http.StatusBadRequest, "Name is required")
 		return
@@ -164,7 +183,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Valid email is required")
 		return
 	}
-	// Password is optional on update; validate only when provided
+	// Password is optional on update; validate only when provided.
 	if req.Password != "" && len(req.Password) < 8 {
 		writeError(w, http.StatusBadRequest, "Password must be at least 8 characters long")
 		return
@@ -178,6 +197,8 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "User not found")
+		} else if errors.Is(err, service.ErrDuplicateEmail) {
+			writeError(w, http.StatusConflict, "An account with that email already exists")
 		} else {
 			writeError(w, http.StatusInternalServerError, "Failed to update user")
 		}

@@ -3,17 +3,24 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"runtime/debug"
 	"time"
 )
 
-// responseWriter wraps http.ResponseWriter to capture the status code.
+// responseWriter wraps http.ResponseWriter to capture the status code written
+// by downstream handlers without double-writing the header.
 type responseWriter struct {
 	http.ResponseWriter
-	status int
+	status      int
+	wroteHeader bool
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
+	if rw.wroteHeader {
+		return
+	}
 	rw.status = code
+	rw.wroteHeader = true
 	rw.ResponseWriter.WriteHeader(code)
 }
 
@@ -27,12 +34,14 @@ func Logger(next http.Handler) http.Handler {
 	})
 }
 
-// Recovery catches any panic from downstream handlers and returns a 500.
+// Recovery catches any panic from downstream handlers, logs the stack trace,
+// and returns a 500. (B5: previously no stack trace was logged)
 func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				log.Printf("panic recovered: %v", rec)
+				// Log the full goroutine stack so the panic is actionable.
+				log.Printf("panic recovered: %v\n%s", rec, debug.Stack())
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 		}()

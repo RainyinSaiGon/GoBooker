@@ -1,9 +1,10 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --brand-50:  #eef5ff;
   --brand-100: #d9e8ff;
   --brand-200: #b3d0ff;
+  --brand-300: #7eb3ff; 
   --brand-400: #5a9eff;
   --brand-500: #2979ff;
   --brand-600: #1a5fe0;
@@ -59,7 +60,7 @@ body {
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--brand-200); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: var(--brand-300); border-radius: 99px; }
 :focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
 
 @keyframes fade-in {

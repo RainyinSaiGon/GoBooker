@@ -3,6 +3,7 @@ package service_test
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -26,12 +27,23 @@ func newFakeUserRepository() *fakeUserRepository {
 	}
 }
 
-func (f *fakeUserRepository) GetAllUsers() ([]model.User, error) {
-	all := make([]model.User, 0, len(f.usersByID))
+func (f *fakeUserRepository) GetAllUsers(query string, limit, offset int) ([]model.User, int, error) {
+	var filtered []model.User
+	query = strings.ToLower(query)
 	for _, u := range f.usersByID {
-		all = append(all, u)
+		if query == "" || strings.Contains(strings.ToLower(u.Name), query) || strings.Contains(strings.ToLower(u.Email), query) {
+			filtered = append(filtered, u)
+		}
 	}
-	return all, nil
+	total := len(filtered)
+	if offset >= len(filtered) {
+		return []model.User{}, total, nil
+	}
+	end := offset + limit
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[offset:end], total, nil
 }
 
 func (f *fakeUserRepository) GetUserByID(id string) (model.User, error) {
@@ -96,12 +108,15 @@ func TestGetAllUsers(t *testing.T) {
 	svc.CreateUser(model.User{Name: "U1", Email: "u1@ex.com"})
 	svc.CreateUser(model.User{Name: "U2", Email: "u2@ex.com"})
 
-	users, err := svc.GetAllUsers()
+	users, total, err := svc.GetAllUsers("", 1, 10)
 	if err != nil {
 		t.Fatalf("GetAllUsers() error = %v", err)
 	}
 	if len(users) != 2 {
 		t.Errorf("got %d users, want 2", len(users))
+	}
+	if total != 2 {
+		t.Errorf("got total %d, want 2", total)
 	}
 }
 
