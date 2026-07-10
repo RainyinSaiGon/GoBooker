@@ -67,3 +67,15 @@ func CORSMiddleware(allowedOrigin string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// JWT validation
+func JWTMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Extract the token from the Authorization header
+		tokenString := r.Header.Get("Authorization")
+		if tokenString == "" {
+			http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+			return
+		}
+	})
+}

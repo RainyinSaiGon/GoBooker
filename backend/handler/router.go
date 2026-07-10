@@ -15,10 +15,17 @@ func RegisterRoutes(r *mux.Router, u *UserHandler) {
 	// API subrouter
 	api := r.PathPrefix("/api/v1").Subrouter()
 
-	// Users
+	// Usersx
 	api.HandleFunc("/users", u.GetAllUsers).Methods(http.MethodGet)
 	api.HandleFunc("/users", u.CreateUser).Methods(http.MethodPost)
 	api.HandleFunc("/users/{id}", u.GetUser).Methods(http.MethodGet)
 	api.HandleFunc("/users/{id}", u.UpdateUser).Methods(http.MethodPut)
 	api.HandleFunc("/users/{id}", u.DeleteUser).Methods(http.MethodDelete)
+
+
+}
+
+func RegisterAuthRoutes(r *mux.Router, a *AuthHandler) {
+	auth := r.PathPrefix("/api/v1").Subrouter()
+	auth.HandleFunc("/auth/login", a.Login).Methods(http.MethodPost)
 }

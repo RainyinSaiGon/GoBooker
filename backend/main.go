@@ -38,9 +38,15 @@ func main() {
 	// Handlers
 	userHandler := handler.NewUserHandler(userSvc)
 
+
+	authRepo := repository.NewAuthRepository(db)
+	authSvc := service.NewAuthService(authRepo)
+	authHandler := handler.NewAuthHandler(authSvc)
+
 	// Router
 	r := mux.NewRouter()
 	handler.RegisterRoutes(r, userHandler)
+	handler.RegisterAuthRoutes(r, authHandler) // Register auth routes
 
 	// Middleware (applied outermost → innermost)
 
