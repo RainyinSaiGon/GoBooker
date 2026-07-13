@@ -7,16 +7,31 @@
  */
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUsers } from "@/lib/queries/users";
 import { PAGE_SIZE_OPTIONS, type PageSize } from "@/lib/constants";
+import { useAuthStore } from "@/lib/store/auth";
 import SearchBar from "./SearchBar";
 import Pagination from "./Pagination";
 import UserList from "./UserList";
 
 export default function DashboardClient() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      router.replace("/signin");
+    }
+  }, [mounted, isAuthenticated, router]);
 
   const query    = searchParams.get("query") ?? "";
   const page     = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -34,6 +49,10 @@ export default function DashboardClient() {
 
   const from = total > 0 ? (safePage - 1) * pageSize + 1 : 0;
   const to   = Math.min(safePage * pageSize, total);
+
+  if (!mounted || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="animate-fade-in mx-auto max-w-3xl space-y-8">

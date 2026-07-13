@@ -6,25 +6,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// RegisterRoutes wires all handlers onto the given mux.Router.
-func RegisterRoutes(r *mux.Router, u *UserHandler) {
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	}).Methods(http.MethodGet)
-
-	// API subrouter
-	api := r.PathPrefix("v1").Subrouter()
-	// Usersx
-	api.HandleFunc("/users", u.GetAllUsers).Methods(http.MethodGet)
-	api.HandleFunc("/users", u.CreateUser).Methods(http.MethodPost)
-	api.HandleFunc("/users/{id}", u.GetUser).Methods(http.MethodGet)
-	api.HandleFunc("/users/{id}", u.UpdateUser).Methods(http.MethodPut)
-	api.HandleFunc("/users/{id}", u.DeleteUser).Methods(http.MethodDelete)
-
-
+// RegisterUserRoutes registers user CRUD handlers under the assumed prefix ("/users")
+func RegisterUserRoutes(r *mux.Router, u *UserHandler) {
+	r.HandleFunc("", u.GetAllUsers).Methods(http.MethodGet)
+	r.HandleFunc("", u.CreateUser).Methods(http.MethodPost)
+	r.HandleFunc("/{id}", u.GetUser).Methods(http.MethodGet)
+	r.HandleFunc("/{id}", u.UpdateUser).Methods(http.MethodPut)
+	r.HandleFunc("/{id}", u.DeleteUser).Methods(http.MethodDelete)
 }
 
+// RegisterAuthRoutes registers authentication handlers under the assumed prefix ("/auth")
 func RegisterAuthRoutes(r *mux.Router, a *AuthHandler) {
-	auth := r.PathPrefix("/v1").Subrouter()
-	auth.HandleFunc("/auth/login", a.Login).Methods(http.MethodPost)
+	r.HandleFunc("/login", a.Login).Methods(http.MethodPost)
+	r.HandleFunc("/refresh", a.Refresh).Methods(http.MethodPost)
+	r.HandleFunc("/logout", a.Logout).Methods(http.MethodPost)
 }

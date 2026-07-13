@@ -23,7 +23,7 @@ interface AuthState {
   isAuthenticated: boolean;
 
   /** Store both tokens after a successful login. */
-  setTokens: (token: string, refreshToken: string) => void;
+  setTokens: (token: string, refreshToken?: string) => void;
 
   /**
    * Clear all auth state.
@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setTokens: (token, refreshToken) =>
-        set({ token, refreshToken, isAuthenticated: true }),
+        set({ token, refreshToken: refreshToken || null, isAuthenticated: true }),
 
       logout: () =>
         set({ token: null, refreshToken: null, isAuthenticated: false }),

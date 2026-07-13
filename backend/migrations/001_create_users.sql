@@ -5,13 +5,14 @@
 
 CREATE TABLE IF NOT EXISTS users (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    email       STRING      NOT NULL UNIQUE,
-    name        STRING      NOT NULL,
-    password    STRING      NOT NULL,
-    role        STRING      NOT NULL DEFAULT 'customer',
+    email       TEXT        NOT NULL UNIQUE,
+    name        TEXT        NOT NULL,
+    password    TEXT        NOT NULL,
+    role        TEXT        NOT NULL DEFAULT 'customer',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Index for fast lookup by email (e.g. login)
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+

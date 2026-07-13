@@ -5,6 +5,8 @@
  * rest of the app never hard-codes fetch() calls or URL strings.
  */
 
+import { useAuthStore } from "./store/auth";
+
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
 export const API_BASE: string =
@@ -48,10 +50,10 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   token:        string;
-  refreshToken: string;
+  refreshToken?: string;
 }
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -62,6 +64,44 @@ async function handleResponse<T>(res: Response): Promise<T> {
     );
   }
   return res.json() as Promise<T>;
+}
+
+async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const headers = (options.headers as Record<string, string>) || {};
+  const token = useAuthStore.getState().token;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  options.headers = headers;
+  options.credentials = "include";
+
+  let res = await fetch(url, options);
+
+  // If 401 and we have a token (expired), try to refresh
+  if (res.status === 401 && token) {
+    try {
+      const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        const newToken = refreshData.token;
+        useAuthStore.getState().setTokens(newToken);
+        
+        // Retry with new token
+        headers["Authorization"] = `Bearer ${newToken}`;
+        options.headers = headers;
+        res = await fetch(url, options);
+      } else {
+        useAuthStore.getState().logout();
+      }
+    } catch (e) {
+      console.error("Token refresh failed:", e);
+      useAuthStore.getState().logout();
+    }
+  }
+  return res;
 }
 
 // ─── API functions ────────────────────────────────────────────────────────────
@@ -76,9 +116,8 @@ export async function apiGetUsers({
     page:  String(page),
     size:  String(pageSize),
   });
-  const res = await fetch(`${API_BASE}/users?${params.toString()}`, {
-    // next: { revalidate: 0 } lets the Server Component always fetch fresh data
-    // for SSR prefetch; the client-side cache is managed by TanStack Query.
+  
+  const res = await authenticatedFetch(`${API_BASE}/users?${params.toString()}`, {
     cache: "no-store",
   });
   return handleResponse<PaginatedUsers>(res);
@@ -98,6 +137,24 @@ export async function apiLogin(payload: LoginPayload): Promise<LoginResponse> {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify(payload),
+    credentials: "include",
   });
   return handleResponse<LoginResponse>(res);
 }
+
+export async function apiRefreshToken(): Promise<LoginResponse> {
+  const res = await fetch(`${API_BASE}/auth/refresh`, {
+    method:  "POST",
+    credentials: "include",
+  });
+  return handleResponse<LoginResponse>(res);
+}
+
+export async function apiLogout(): Promise<{ status: string }> {
+  const res = await fetch(`${API_BASE}/auth/logout`, {
+    method:  "POST",
+    credentials: "include",
+  });
+  return handleResponse<{ status: string }>(res);
+}
+

@@ -18,19 +18,25 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/store/auth";
+import { apiLogout } from "@/lib/api";
 
 export default function SignOutButton() {
   const router      = useRouter();
   const queryClient = useQueryClient();
   const logout      = useAuthStore((s) => s.logout);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await apiLogout();
+    } catch (e) {
+      console.error("Failed to sign out from backend:", e);
+    }
     // 1. Clear Zustand auth state (+ localStorage via persist middleware).
     logout();
     // 2. Wipe all cached query data so the next user starts with a clean slate.
     queryClient.clear();
-    // 3. Navigate back to the sign-up / landing page.
-    router.push("/");
+    // 3. Navigate back to the sign-in page.
+    router.push("/signin");
   };
 
   return (

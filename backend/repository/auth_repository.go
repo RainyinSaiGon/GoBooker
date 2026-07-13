@@ -17,13 +17,13 @@ func  NewAuthRepository(db *sql.DB) AuthRepository {
 	return &authRepository{db: db}
 }
 
-// Find user by email and return the user ID and hashed password.
+// Find user by email and return the user details.
 func (r *authRepository) GetUserByEmail(email string) (model.User, error) {
-	var id, password string
-	err := r.db.QueryRow("SELECT id, password FROM users WHERE email = $1", email).Scan(&id, &password)
+	var u model.User
+	err := r.db.QueryRow("SELECT id, email, password, role FROM users WHERE email = $1", email).Scan(&u.ID, &u.Email, &u.Password, &u.Role)
 	if err != nil {
 		return model.User{}, err
 	}
-	return model.User{ID: id, Password: password}, nil
+	return u, nil
 }
 

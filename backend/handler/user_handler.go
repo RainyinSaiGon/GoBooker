@@ -14,9 +14,10 @@ import (
 
 // UserResponse is the public representation of a user returned by the API.
 type UserResponse struct {
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
-	Role  string `json:"role"` // F2: expose role so the frontend can show the real value
+	Role  string `json:"role"`
 }
 
 // PaginatedUsersResponse is the wrapper for user queries.
@@ -45,8 +46,12 @@ func NewUserHandler(svc service.UserService) *UserHandler {
 	return &UserHandler{svc: svc}
 }
 
+// maxBodySize limits the size of incoming request bodies (1 MB).
+const maxBodySize = 1 << 20
+
 func toUserResponse(u model.User) UserResponse {
 	return UserResponse{
+		ID:    u.ID,
 		Name:  u.Name,
 		Email: u.Email,
 		Role:  u.Role,
@@ -107,6 +112,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	var req UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -151,6 +157,7 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 	id := mux.Vars(r)["id"]
 
 	var req UserRequest

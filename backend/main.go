@@ -36,7 +36,7 @@ func main() {
 
 	// Services
 	userSvc := service.NewUserService(userRepo)
-	authSvc := service.NewAuthService(authRepo)
+	authSvc := service.NewAuthService(authRepo, cfg.JWTSecret, cfg.JWTRefreshSecret)
 
 	// Handlers
 	userHandler := handler.NewUserHandler(userSvc)
@@ -45,14 +45,24 @@ func main() {
 	// Single root router
 	r := mux.NewRouter()
 
-	// Public subrouter - no JWT
-	publicRouter := r.PathPrefix("/api").Subrouter()
-	handler.RegisterAuthRoutes(publicRouter, authHandler)
+	// API subrouter
+	apiV1 := r.PathPrefix("/api/v1").Subrouter()
 
-	// Protected subrouter - JWT applied only here
-	protectedRouter := r.PathPrefix("/api").Subrouter()
-	protectedRouter.Use(middleware.JWTMiddleware)
-	handler.RegisterRoutes(protectedRouter, userHandler)
+	// Public Health endpoint
+	apiV1.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}).Methods(http.MethodGet)
+
+	// Public Auth subrouter
+	authRouter := apiV1.PathPrefix("/auth").Subrouter()
+	handler.RegisterAuthRoutes(authRouter, authHandler)
+
+	// Protected Users subrouter - JWT applied only here
+	userRouter := apiV1.PathPrefix("/users").Subrouter()
+	userRouter.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	handler.RegisterUserRoutes(userRouter, userHandler)
 
 	// Middleware applied to the whole server (outermost → innermost)
 	chain := middleware.CORSMiddleware(cfg.AllowedOrigin)(

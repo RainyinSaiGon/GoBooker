@@ -11,9 +11,11 @@ import (
 
 // Config holds all application-level configuration.
 type Config struct {
-	Port          string
-	DatabaseURL   string
-	AllowedOrigin string
+	Port            string
+	DatabaseURL     string
+	AllowedOrigin   string
+	JWTSecret       string
+	JWTRefreshSecret string
 }
 
 // Load reads configuration from environment variables and returns a Config.
@@ -33,6 +35,16 @@ func Load() Config {
 		log.Fatal("DATABASE_URL environment variable is required")
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is required")
+	}
+
+	jwtRefreshSecret := os.Getenv("JWT_REFRESH_SECRET")
+	if jwtRefreshSecret == "" {
+		log.Fatal("JWT_REFRESH_SECRET environment variable is required")
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3001"
@@ -44,8 +56,10 @@ func Load() Config {
 	}
 
 	return Config{
-		Port:          port,
-		DatabaseURL:   dbURL,
-		AllowedOrigin: allowedOrigin,
+		Port:             port,
+		DatabaseURL:      dbURL,
+		AllowedOrigin:    allowedOrigin,
+		JWTSecret:        jwtSecret,
+		JWTRefreshSecret: jwtRefreshSecret,
 	}
 }

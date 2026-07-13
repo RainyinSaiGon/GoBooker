@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCreateUser } from "@/lib/queries/users";
@@ -31,6 +31,7 @@ function FieldError({ msg }: { msg?: string }) {
 export default function SignUpPage() {
   const router     = useRouter();
   const setTokens  = useAuthStore((s) => s.setTokens);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const mutation   = useCreateUser();
 
   const [name,          setName]          = useState("");
@@ -39,6 +40,17 @@ export default function SignUpPage() {
   const [showPassword,  setShowPassword]  = useState(false);
   const [errors,        setErrors]        = useState<FormErrors>({});
   const [touched,       setTouched]       = useState<Record<string, boolean>>({});
+  const [mounted,       setMounted]       = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [mounted, isAuthenticated, router]);
 
   // ── Validation ──────────────────────────────────────────────────────────────
 
@@ -96,6 +108,10 @@ export default function SignUpPage() {
   const serverError  = mutation.error?.message ?? "";
 
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  if (!mounted || isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
