@@ -146,6 +146,7 @@ export default function SignUpPage() {
                 <FieldError msg={touched.name ? errors.name : undefined} />
               </div>
 
+
               {/* Email */}
               <div>
                 <label htmlFor="email" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
