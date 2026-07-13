@@ -13,8 +13,7 @@ func RegisterRoutes(r *mux.Router, u *UserHandler) {
 	}).Methods(http.MethodGet)
 
 	// API subrouter
-	api := r.PathPrefix("/api/v1").Subrouter()
-
+	api := r.PathPrefix("v1").Subrouter()
 	// Usersx
 	api.HandleFunc("/users", u.GetAllUsers).Methods(http.MethodGet)
 	api.HandleFunc("/users", u.CreateUser).Methods(http.MethodPost)
@@ -26,6 +25,6 @@ func RegisterRoutes(r *mux.Router, u *UserHandler) {
 }
 
 func RegisterAuthRoutes(r *mux.Router, a *AuthHandler) {
-	auth := r.PathPrefix("/api/v1").Subrouter()
+	auth := r.PathPrefix("/v1").Subrouter()
 	auth.HandleFunc("/auth/login", a.Login).Methods(http.MethodPost)
 }

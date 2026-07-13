@@ -125,7 +125,7 @@ export default function SignUpPage() {
               <div className="mb-6">
                 <h1 className="text-xl font-bold text-[var(--text-primary)]">Create your account</h1>
                 <p className="mt-1 text-sm text-[var(--text-secondary)]">Already have one?{" "}
-                  <Link href="/dashboard" className="font-medium text-[var(--brand-500)] hover:underline">Sign in</Link>
+                  <Link href="/signin" className="font-medium text-[var(--brand-500)] hover:underline">Sign in</Link>
                 </p>
               </div>
 
