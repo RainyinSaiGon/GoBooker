@@ -3,34 +3,29 @@
 /**
  * SearchBar — Client Component
  *
- * Implements the Next.js recommended search pattern from the official tutorial
- * (nextjs.org/learn — Chapter 10: Adding Search and Pagination):
- *
- *   1. Read current params with useSearchParams().
- *   2. On input change, debounce (300 ms) then call router.replace() so the
- *      Server Component page re-renders with the new query in the URL.
- *      Using `replace` (not `push`) keeps the browser history clean — the user
- *      won't have to hit Back dozens of times after typing a search query.
- *   3. Reset `page` to "1" whenever the query or page size changes so the user
- *      never lands on an empty page.
- *   4. The refresh button calls router.refresh(), which re-fetches the server
- *      data without a full navigation.
+ * Search and page-size controls. State is stored in URL params (shareable,
+ * bookmarkable) following the Next.js tutorial pattern. The key change from
+ * the original is the refresh button: instead of `router.refresh()` (which
+ * triggers a full Server Component re-render), we call
+ * `queryClient.invalidateQueries(userKeys.all)` so TanStack Query does a
+ * background refetch and updates only what changed.
  */
 
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useRef, useCallback, useTransition, useState } from "react";
-import { PAGE_SIZE_OPTIONS, type PageSize } from "../page";
+import { useQueryClient } from "@tanstack/react-query";
+import { PAGE_SIZE_OPTIONS, type PageSize } from "@/lib/constants";
+import { userKeys } from "@/lib/queries/users";
 
 export default function SearchBar() {
-  const searchParams  = useSearchParams();
-  const pathname      = usePathname();
-  const { replace, refresh } = useRouter();
-  const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchParams          = useSearchParams();
+  const pathname              = usePathname();
+  const { replace }           = useRouter();
+  const queryClient           = useQueryClient();
+  const debounceRef           = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Current values from URL (used as controlled values for the select,
-  // and as defaultValue for the uncontrolled search input).
   const currentQuery = searchParams.get("query") ?? "";
   const currentSize  = searchParams.get("size") ?? "10";
 
@@ -55,8 +50,8 @@ export default function SearchBar() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         updateParams({
-          query: value.trim() || null, // remove param when empty
-          page: "1",                   // reset to page 1 on new query
+          query: value.trim() || null,
+          page:  "1",
         });
       }, 300);
     },
@@ -71,13 +66,16 @@ export default function SearchBar() {
     [updateParams],
   );
 
-  /** Refresh button — re-fetches server data without changing the URL. */
+  /**
+   * Refresh button — invalidates the user query so TanStack Query does a
+   * background refetch. This is cheaper than router.refresh() because it
+   * only re-fetches the affected data, not the whole Server Component tree.
+   */
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    refresh();
-    // The spinning animation runs for 700 ms regardless so it looks intentional.
+    queryClient.invalidateQueries({ queryKey: userKeys.all });
     setTimeout(() => setIsRefreshing(false), 700);
-  }, [refresh]);
+  }, [queryClient]);
 
   return (
     <div className="flex items-center gap-3">
@@ -94,15 +92,12 @@ export default function SearchBar() {
         <input
           id="user-search"
           type="search"
-          // defaultValue keeps the input uncontrolled so typing is not
-          // interrupted by re-renders from URL changes (Next.js tutorial pattern).
           defaultValue={currentQuery}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder="Search by name or email…"
           aria-label="Search users"
           className={`w-full rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] py-2.5 pl-10 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] transition focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-200)] ${isPending ? "opacity-60" : ""}`}
         />
-        {/* Pending indicator — appears while the Server Component re-renders */}
         {isPending && (
           <span className="absolute right-3 top-1/2 -translate-y-1/2">
             <svg className="h-4 w-4 animate-spin text-[var(--brand-400)]" fill="none" viewBox="0 0 24 24">
@@ -113,7 +108,18 @@ export default function SearchBar() {
         )}
       </div>
 
-   
+      {/* ── Page-size selector ── */}
+      <select
+        id="page-size"
+        value={currentSize}
+        onChange={(e) => handlePageSize(e.target.value)}
+        aria-label="Rows per page"
+        className="h-10 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-secondary)] transition focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-200)]"
+      >
+        {PAGE_SIZE_OPTIONS.map((s) => (
+          <option key={s} value={s}>{s} / page</option>
+        ))}
+      </select>
 
       {/* ── Refresh button ── */}
       <button

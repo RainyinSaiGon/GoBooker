@@ -1,18 +1,36 @@
 "use client";
 
 /**
- * SignOutButton — Client Component leaf
+ * SignOutButton — Client Component
  *
- * Extracted to satisfy the Server Components rules:
- *   - DashboardLayout is a Server Component (no "use client").
- *   - Event handlers (onClick) are only allowed in Client Components.
- *   - By keeping DashboardLayout as a Server Component, we avoid converting the
- *     entire layout and its subtree to client-rendering.
+ * Performs a clean client-side logout:
+ *   1. Clear auth tokens from Zustand store (also clears localStorage via
+ *      the persist middleware).
+ *   2. Call queryClient.clear() so no user-scoped cached data leaks into
+ *      the next session.
+ *   3. Redirect to the sign-in page.
+ *
+ * NOTE: The backend currently has no /logout endpoint (no server-side token
+ * revocation). This is tracked as a follow-up task. Client-side logout is
+ * safe for now since access tokens are short-lived (~30 min).
  */
+
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/lib/store/auth";
+
 export default function SignOutButton() {
+  const router      = useRouter();
+  const queryClient = useQueryClient();
+  const logout      = useAuthStore((s) => s.logout);
+
   const handleSignOut = () => {
-    // TODO: wire to real auth / signOut call
-    console.log("Signing out...");
+    // 1. Clear Zustand auth state (+ localStorage via persist middleware).
+    logout();
+    // 2. Wipe all cached query data so the next user starts with a clean slate.
+    queryClient.clear();
+    // 3. Navigate back to the sign-up / landing page.
+    router.push("/");
   };
 
   return (

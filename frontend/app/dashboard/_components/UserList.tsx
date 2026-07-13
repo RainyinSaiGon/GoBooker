@@ -1,5 +1,20 @@
 import Link from "next/link";
-import type { User } from "../page";
+import type { User } from "@/lib/api";
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function SkeletonCard() {
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3.5">
+      <div className="skeleton h-10 w-10 shrink-0 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <div className="skeleton h-3.5 w-36 rounded" />
+        <div className="skeleton h-3 w-48 rounded" />
+      </div>
+      <div className="skeleton h-5 w-16 rounded-full" />
+    </div>
+  );
+}
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -36,12 +51,24 @@ function RoleBadge({ role }: { role: string }) {
 // ─── UserList ─────────────────────────────────────────────────────────────────
 
 interface UserListProps {
-  users: User[];
-  error: string | null;
-  search: string;
+  users:     User[];
+  isLoading: boolean;
+  error:     string | null;
+  search:    string;
 }
 
-export default function UserList({ users, error, search }: UserListProps) {
+export default function UserList({ users, isLoading, error, search }: UserListProps) {
+  // ── Loading skeleton ──
+  if (isLoading) {
+    return (
+      <div className="space-y-2.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+    );
+  }
+
   // ── Error state ──
   if (error) {
     return (
