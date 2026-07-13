@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -38,7 +39,6 @@ func main() {
 	// Handlers
 	userHandler := handler.NewUserHandler(userSvc)
 
-
 	authRepo := repository.NewAuthRepository(db)
 	authSvc := service.NewAuthService(authRepo)
 	authHandler := handler.NewAuthHandler(authSvc)
@@ -46,14 +46,27 @@ func main() {
 	// Router
 	r := mux.NewRouter()
 	handler.RegisterRoutes(r, userHandler)
-	handler.RegisterAuthRoutes(r, authHandler) // Register auth routes
+	handler.RegisterAuthRoutes(r, authHandler)
 
 	// Middleware (applied outermost → innermost)
+	chain := middleware.CORSMiddleware(cfg.AllowedOrigin)(
+	middleware.Recovery(
+		middleware.Logger(
+			middleware.JWTMiddleware(r),
+		),
+	),
+)
 
-	chain := middleware.CORSMiddleware(cfg.AllowedOrigin)(middleware.Recovery(middleware.Logger(r)))
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      chain,
+		ReadTimeout:  10 * time.Second, 
+		WriteTimeout: 10 * time.Second, 
+		IdleTimeout:  60 * time.Second, 
+	}
 
 	log.Printf("listening on :%s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, chain); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -32,9 +32,19 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/",              
+		HttpOnly: true,             
+		Secure:   true,            
+		SameSite: http.SameSiteStrictMode, 
+		MaxAge:   7 * 24 * 60 * 60, 
+	})
+
+
 	writeJSON(w, http.StatusOK, map[string]string{
 		"token":       token,
-		"refreshToken": refreshToken,
 	})
 }
 

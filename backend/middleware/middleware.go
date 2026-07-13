@@ -5,6 +5,10 @@ import (
 	"net/http"
 	"runtime/debug"
 	"time"
+	"fmt"
+	"errors"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // responseWriter wraps http.ResponseWriter to capture the status code written
@@ -35,7 +39,7 @@ func Logger(next http.Handler) http.Handler {
 }
 
 // Recovery catches any panic from downstream handlers, logs the stack trace,
-// and returns a 500. (B5: previously no stack trace was logged)
+// and returns a 500.
 func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -68,14 +72,45 @@ func CORSMiddleware(allowedOrigin string) func(http.Handler) http.Handler {
 	}
 }
 
+func ValidateToken(tokenString string, secret []byte) (jwt.MapClaims, error) {
+    token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+        if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+            return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+        }
+        return secret, nil
+    })
+    if err != nil {
+        return nil, err // signature invalid, expired, or malformed
+    }
+    claims, ok := token.Claims.(jwt.MapClaims)
+    if !ok || !token.Valid {
+        return nil, errors.New("invalid token")
+    }
+    return claims, nil
+}
+
+
+// TODO: Implement access token for refresh token flow.
 // JWT validation
 func JWTMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Extract the token from the Authorization header
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
-			http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+			http.Error(w, "Missing header", http.StatusUnauthorized)
 			return
 		}
+
+		token := tokenString[len("Bearer "):] // Remove "Bearer " prefix
+
+		// Validate the token
+		_, err := ValidateToken(token, []byte("your-secret-key"))
+		if err != nil {
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+
 	})
 }
