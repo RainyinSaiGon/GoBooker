@@ -103,12 +103,21 @@ func (m *mockUserService) DeleteUser(id string) error {
 	return service.ErrNotFound
 }
 
-// ─── Helper ─────────────────────────────────────────────────────────────────
-
 func newTestRouter(svc service.UserService) *mux.Router {
 	r := mux.NewRouter()
 	h := handler.NewUserHandler(svc)
-	handler.RegisterRoutes(r, h)
+	
+	// Register health check on root
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}).Methods(http.MethodGet)
+
+	// Register user routes with the /api/v1/users prefix
+	userRouter := r.PathPrefix("/api/v1/users").Subrouter()
+	handler.RegisterUserRoutes(userRouter, h)
+	
 	return r
 }
 
