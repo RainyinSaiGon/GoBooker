@@ -74,6 +74,8 @@ services:
     environment:
       PORT: 8081
       DATABASE_URL: postgresql://root@roach1:26257/defaultdb?sslmode=disable
+      JWT_SECRET: dev-jwt-secret-change-in-production
+      JWT_REFRESH_SECRET: dev-jwt-refresh-secret-change-in-production
     ports:
       - "3001:8081"
     depends_on:

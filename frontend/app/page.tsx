@@ -78,7 +78,7 @@ export default function SignUpPage() {
 
   // ── Submit ──────────────────────────────────────────────────────────────────
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     const newErrors = validate({ name, email, password });
     setErrors(newErrors);
