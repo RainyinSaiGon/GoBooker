@@ -17,7 +17,7 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  // Prevent SSR flickering / hydration mismatches
+  // Prevent SSR flickering 
   if (!mounted) {
     return (
       <div className="flex-center animate-fade-in" style={{ minHeight: "100vh" }}>

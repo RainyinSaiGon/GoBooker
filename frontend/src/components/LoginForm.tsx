@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { apiClient } from "@/api";
-import { LogIn } from "lucide-react";
 
 export default function LoginForm() {
   const { setToken } = useAuthStore();
@@ -12,7 +11,7 @@ export default function LoginForm() {
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setLoginError("");
     setLoginLoading(true);
@@ -32,7 +31,6 @@ export default function LoginForm() {
       <div className="card" style={{ maxWidth: "450px", width: "100%" }}>
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>GoBooker</h1>
-          <p className="text-muted">Sign in to manage users</p>
         </div>
 
         {loginError && <div className="alert alert-danger">{loginError}</div>}
@@ -65,7 +63,7 @@ export default function LoginForm() {
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ width: "100%" }} disabled={loginLoading}>
-            <LogIn size={18} />
+
             {loginLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>

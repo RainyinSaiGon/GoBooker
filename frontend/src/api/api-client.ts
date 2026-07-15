@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useAuthStore } from "@/lib/store/authStore";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const API_BASE_URL =  "http://localhost:3001/api/v1";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -36,7 +36,6 @@ export interface UserInput {
   name: string;
   email: string;
   password?: string;
-  role: string;
 }
 
 export interface PaginatedUsersResponse {

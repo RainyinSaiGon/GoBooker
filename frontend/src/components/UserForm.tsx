@@ -13,7 +13,6 @@ export default function UserForm({ editingUser, onFinished }: UserFormProps) {
   const [nameInput, setNameInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
-  const [roleInput, setRoleInput] = useState("customer");
   
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -23,7 +22,6 @@ export default function UserForm({ editingUser, onFinished }: UserFormProps) {
     if (editingUser) {
       setNameInput(editingUser.name);
       setEmailInput(editingUser.email);
-      setRoleInput(editingUser.role);
       setPasswordInput(""); // Blank password unless changing
       setErrorMsg("");
       setSuccessMsg("");
@@ -36,7 +34,6 @@ export default function UserForm({ editingUser, onFinished }: UserFormProps) {
     setNameInput("");
     setEmailInput("");
     setPasswordInput("");
-    setRoleInput("customer");
   };
 
   const createMutation = useCreateUser({
@@ -75,8 +72,7 @@ export default function UserForm({ editingUser, onFinished }: UserFormProps) {
 
     const inputData: UserInput = {
       name: nameInput,
-      email: emailInput,
-      role: roleInput,
+      email: emailInput
     };
 
     if (editingUser) {
@@ -127,6 +123,7 @@ export default function UserForm({ editingUser, onFinished }: UserFormProps) {
           />
         </div>
 
+          {/* Email */}
         <div className="form-group">
           <label className="form-label" htmlFor="userEmail">Email Address</label>
           <input
@@ -140,6 +137,7 @@ export default function UserForm({ editingUser, onFinished }: UserFormProps) {
           />
         </div>
 
+        {/* Password */}
         <div className="form-group">
           <label className="form-label" htmlFor="userPassword">
             {editingUser ? "Password (leave blank to keep current)" : "Password"}
@@ -155,18 +153,7 @@ export default function UserForm({ editingUser, onFinished }: UserFormProps) {
           />
         </div>
 
-        <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-          <label className="form-label" htmlFor="userRole">Role</label>
-          <select
-            id="userRole"
-            className="form-select"
-            value={roleInput}
-            onChange={(e) => setRoleInput(e.target.value)}
-          >
-            <option value="customer">Customer</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
+  
 
         <button 
           type="submit" 
