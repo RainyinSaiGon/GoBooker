@@ -21,3 +21,11 @@ func RegisterAuthRoutes(r *mux.Router, a *AuthHandler) {
 	r.HandleFunc("/refresh", a.Refresh).Methods(http.MethodPost)
 	r.HandleFunc("/logout", a.Logout).Methods(http.MethodPost)
 }
+
+func RegisterConcertRoutes(r *mux.Router, c *ConcertHandler) {
+	r.HandleFunc("", c.GetAllConcerts).Methods(http.MethodGet)
+	r.HandleFunc("/location/{location}", c.GetAllConcertsByLocation).Methods(http.MethodGet)
+	r.HandleFunc("", c.CreateConcert).Methods(http.MethodPost)
+	r.HandleFunc("/{id}", c.UpdateConcert).Methods(http.MethodPut)
+	r.HandleFunc("/{id}", c.DeleteConcert).Methods(http.MethodDelete)
+}

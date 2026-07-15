@@ -33,14 +33,17 @@ func main() {
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
 	authRepo := repository.NewAuthRepository(db)
+	concertRepo := repository.NewConcertRepository(db)
 
 	// Services
 	userSvc := service.NewUserService(userRepo)
 	authSvc := service.NewAuthService(authRepo, cfg.JWTSecret, cfg.JWTRefreshSecret)
+	concertSvc := service.NewConcertService(concertRepo)
 
 	// Handlers
 	userHandler := handler.NewUserHandler(userSvc)
 	authHandler := handler.NewAuthHandler(authSvc)
+	concertHandler := handler.NewConcertHandler(concertSvc)
 
 	// Single root router
 	r := mux.NewRouter()
@@ -58,6 +61,11 @@ func main() {
 	// Public Auth subrouter
 	authRouter := apiV1.PathPrefix("/auth").Subrouter()
 	handler.RegisterAuthRoutes(authRouter, authHandler)
+
+	// Protected Concert subrouter
+	concertRouter := apiV1.PathPrefix("/concerts").Subrouter()
+    concertRouter.Use(middleware.JWTMiddleware(cfg.JWTSecret)) // Apply JWT middleware to concert routes
+	handler.RegisterConcertRoutes(concertRouter, concertHandler)
 
 	// Protected Users subrouter - JWT applied only here
 	userRouter := apiV1.PathPrefix("/users").Subrouter()
