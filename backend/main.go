@@ -64,7 +64,7 @@ func main() {
 
 	// Protected Concert subrouter
 	concertRouter := apiV1.PathPrefix("/concerts").Subrouter()
-    concertRouter.Use(middleware.JWTMiddleware(cfg.JWTSecret)) // Apply JWT middleware to concert routes
+    concertRouter.Use(middleware.JWTMiddleware(cfg.JWTSecret)) 
 	handler.RegisterConcertRoutes(concertRouter, concertHandler)
 
 	// Protected Users subrouter - JWT applied only here

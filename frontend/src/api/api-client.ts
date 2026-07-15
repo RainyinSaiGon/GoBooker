@@ -45,5 +45,35 @@ export interface PaginatedUsersResponse {
   size: number;
   totalPages: number;
 }
+export interface Concert {
+  id: string;
+  name: string;
+  location: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  version: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConcertInput {
+  name: string;
+  location: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface PaginatedConcertsResponse {
+  concerts: Concert[];
+  total: number;
+  page: number;
+  size: number;
+  totalPages: number;
+}
+
+
+
 
 
