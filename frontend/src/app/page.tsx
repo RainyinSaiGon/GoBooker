@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
-import { User } from "@/api";
+import { User } from "@/hooks";
 import LoginForm from "@/components/LoginForm";
 import Header from "@/components/Header";
-import UserList from "@/components/UserList";
-import UserForm from "@/components/UserForm";
+import UserList from "@/components/user/UserList";
+import UserForm from "@/components/user/UserForm";
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);

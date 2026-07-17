@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, useUsers, useDeleteUser } from "@/api";
+import { User, useUsers, useDeleteUser } from "@/hooks";
 import { Trash2, Edit2, Search, RefreshCw, X } from "lucide-react";
 
 interface UserListProps {

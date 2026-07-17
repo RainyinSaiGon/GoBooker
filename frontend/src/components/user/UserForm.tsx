@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, UserInput, useCreateUser, useUpdateUser } from "@/api";
+import { User, UserInput, useCreateUser, useUpdateUser } from "@/hooks";
 import { UserPlus, Edit2 } from "lucide-react";
 
 interface UserFormProps {

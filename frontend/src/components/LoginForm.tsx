@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
-import { apiClient } from "@/api";
+import { apiClient } from "@/hooks";
 
 export default function LoginForm() {
   const { setToken } = useAuthStore();

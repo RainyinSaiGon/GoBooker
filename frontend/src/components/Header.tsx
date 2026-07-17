@@ -2,7 +2,7 @@
 
 import { useAuthStore } from "@/lib/store/authStore";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/api";
+import { apiClient } from "@/hooks";
 import { LogOut } from "lucide-react";
 
 export default function Header() {
